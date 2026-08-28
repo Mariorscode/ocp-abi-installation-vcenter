@@ -1,0 +1,7 @@
+# Spec file for scripts/add-nodes.sh (day-2: adding worker nodes to an
+# already-installed cluster). Same schema as nodes.csv - copy this file to
+# config/new-nodes.csv and list ONLY the new machines you want to add.
+#
+# Only role=worker is supported for day-2 additions.
+name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb
+worker-2,worker,dynamic,,192.0.2.15,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120

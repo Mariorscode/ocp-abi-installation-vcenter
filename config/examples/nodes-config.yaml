@@ -1,0 +1,31 @@
+# Template for scripts/add-nodes.sh --manual-nodes-config
+# Copy to config/nodes-config.yaml and fill it in. The script will use it
+# as-is (it will NOT generate or overwrite it in that mode).
+
+hosts:
+  - hostname: worker-2
+    interfaces:
+      - name: eth0
+        macAddress: 00:50:56:00:00:06
+    networkConfig:
+      interfaces:
+        - name: eth0
+          type: ethernet
+          state: up
+          mac-address: 00:50:56:00:00:06
+          ipv4:
+            enabled: true
+            dhcp: false
+            address:
+              - ip: 192.0.2.15
+                prefix-length: 24
+      dns-resolver:
+        config:
+          server:
+            - 192.0.2.2
+            - 192.0.2.3
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: 192.0.2.1
+            next-hop-interface: eth0

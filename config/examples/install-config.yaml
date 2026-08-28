@@ -1,0 +1,38 @@
+apiVersion: v1
+metadata:
+  name: ${CLUSTER_NAME}
+baseDomain: ${BASE_DOMAIN}
+
+# This file is a TEMPLATE: scripts/install.sh renders it with envsubst into
+# config/install-config.yaml, substituting every ${VAR} below from
+# config/cluster-vars.env (plus the replica counts, which come from the
+# nodes actually created). Don't edit config/install-config.yaml directly -
+# it's regenerated on every run.
+
+platform:
+  baremetal:
+    apiVIPs:
+      - ${API_VIP}
+    ingressVIPs:
+      - ${INGRESS_VIP}
+
+networking:
+  networkType: OVNKubernetes
+  machineNetwork:
+    - cidr: ${MACHINE_NETWORK_CIDR}
+  clusterNetwork:
+    - cidr: ${CLUSTER_NETWORK_CIDR}
+      hostPrefix: ${CLUSTER_NETWORK_HOST_PREFIX}
+  serviceNetwork:
+    - ${SERVICE_NETWORK_CIDR}
+
+controlPlane:
+  name: master
+  replicas: ${CONTROL_PLANE_COUNT}
+
+compute:
+  - name: worker
+    replicas: ${WORKER_COUNT}
+
+pullSecret: '${PULL_SECRET}'
+sshKey: '${SSH_PUBLIC_KEY}'

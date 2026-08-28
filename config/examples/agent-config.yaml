@@ -1,0 +1,72 @@
+# Template for scripts/install.sh --manual-agent-config
+# Copy to config/agent-config.yaml and fill it in yourself. The script will
+# use it as-is (it will NOT generate or overwrite it in that mode).
+
+apiVersion: v1alpha1
+metadata:
+  name: ocp4-abi
+rendezvousIP: 192.0.2.10
+hosts:
+  - hostname: master-0
+    role: master
+    interfaces:
+      - name: eth0
+        macAddress: 00:50:56:00:00:01
+    networkConfig:
+      interfaces:
+        - name: eth0
+          type: ethernet
+          state: up
+          mac-address: 00:50:56:00:00:01
+          ipv4:
+            enabled: true
+            dhcp: false
+            address:
+              - ip: 192.0.2.10
+                prefix-length: 24
+      dns-resolver:
+        config:
+          server:
+            - 192.0.2.2
+            - 192.0.2.3
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: 192.0.2.1
+            next-hop-interface: eth0
+
+  - hostname: master-1
+    role: master
+    interfaces:
+      - name: eth0
+        macAddress: 00:50:56:00:00:02
+    networkConfig:
+      interfaces:
+        - name: eth0
+          type: ethernet
+          state: up
+          mac-address: 00:50:56:00:00:02
+          ipv4:
+            enabled: true
+            dhcp: false
+            address:
+              - ip: 192.0.2.11
+                prefix-length: 24
+      dns-resolver:
+        config:
+          server:
+            - 192.0.2.2
+            - 192.0.2.3
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: 192.0.2.1
+            next-hop-interface: eth0
+
+  - hostname: master-2
+    role: master
+    interfaces:
+      - name: eth0
+        macAddress: 00:50:56:00:00:03
+    # No networkConfig here: this host boots with DHCP instead of a static
+    # IP, and does not require nmstatectl on the bastion.

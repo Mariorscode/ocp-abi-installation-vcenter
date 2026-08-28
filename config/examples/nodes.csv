@@ -1,0 +1,30 @@
+# Copy this file to config/nodes.csv and fill in your values.
+# config/nodes.csv is gitignored (contains real MACs/IPs). The header row is
+# mandatory and must match exactly; '#' comments and blank lines are ignored.
+#
+# mac_mode:
+#   fixed   -> `mac` is used as-is when the VM is created in vCenter
+#   dynamic -> `mac` is left empty; vCenter/ESXi assigns the MAC when the
+#              VM is created, and scripts/install.sh reads it back and
+#              records it in config/nodes.resolved.csv
+#
+# Columns:
+#   name       VM / node hostname
+#   role       master or worker
+#   mac_mode   fixed | dynamic (see above)
+#   mac        required when mac_mode=fixed, leave empty when dynamic
+#   ip         static IP (always required - this repo never uses DHCP)
+#   prefix     netmask length, e.g. 24
+#   gateway    default gateway for the node
+#   dns        one or more DNS servers, separated by "|"
+#   cpu        vCPU count
+#   memory_mb  RAM in MB
+#   disk_gb    size of the OS (root) disk in GB
+#
+# NIC type is always vmxnet3 (hardcoded in the scripts).
+name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb
+master-0,master,fixed,00:50:56:00:00:01,192.0.2.10,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
+master-1,master,fixed,00:50:56:00:00:02,192.0.2.11,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
+master-2,master,dynamic,,192.0.2.12,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
+worker-0,worker,dynamic,,192.0.2.13,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
+worker-1,worker,dynamic,,192.0.2.14,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120

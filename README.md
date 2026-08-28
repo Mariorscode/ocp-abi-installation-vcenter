@@ -1,1 +1,1 @@
-# Installing an OCP cluster via ABI in Vcenter
+# Installing an OCP cluster via ABI in vCenter

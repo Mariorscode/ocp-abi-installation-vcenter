@@ -1,0 +1,41 @@
+# --- vCenter connection secrets ---
+# (config/examples/*.example templates are NOT matched by these, on purpose)
+config/vcenter-vars.env
+config/vcenter-vars.*.env
+.vcenter-token
+.govc/
+.govmomi/
+
+# --- Rendered / generated install artifacts ---
+# One directory per cluster lives under clusters/ (manifests, ISO, auth/)
+clusters/
+install-dir/
+install-dir-*/
+*.iso
+auth/
+.openshift_install*
+.clusterapi_output/
+*.log
+
+# --- Rendered configs (generated from templates, contain real IPs/secrets) ---
+config/install-config.yaml
+config/agent-config.yaml
+config/nodes-config.yaml
+
+# --- Cluster/node topology (real hostnames, MACs, IPs, pull secret, ssh key) ---
+config/cluster-vars.env
+config/nodes.csv
+config/nodes.resolved.csv
+config/new-nodes.csv
+config/new-nodes.resolved.csv
+config/pull-secret.json
+config/ssh-key.pub
+
+# --- Day-2 add-nodes assets ---
+day2-nodes-dir/
+day2-nodes-dir-*/
+
+# --- OS / editor cruft ---
+.DS_Store
+*.swp
+

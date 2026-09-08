@@ -55,7 +55,7 @@ You also need, reachable from the cluster network:
 
 ---
 
-# Uso de los scripts
+# Using Scripts
 
 Three scripts, all run from the repo root:
 

@@ -1,3 +1,16 @@
+<div align="center">
+
+# OpenShift on vCenter — Agent-Based Installer
+
+**Automated day-1 and day-2 provisioning of OpenShift 4.20 clusters on vCenter-hosted VMs, installed as bare metal.**
+
+[![OpenShift](https://img.shields.io/badge/OpenShift-4.20-EE0000?logo=redhatopenshift&logoColor=white)](https://docs.openshift.com/container-platform/4.20/installing/installing_with_agent_based_installer/preparing-to-install-with-agent-based-installer.html)
+[![Installer](https://img.shields.io/badge/Installer-Agent--Based%20(ABI)-CC0000)](https://docs.openshift.com/container-platform/4.20/installing/installing_with_agent_based_installer/preparing-to-install-with-agent-based-installer.html)
+[![Platform](https://img.shields.io/badge/platform-baremetal%20on%20vCenter-0F80C1?logo=vmware&logoColor=white)](https://github.com/vmware/govmomi)
+[![Shell](https://img.shields.io/badge/shell-Bash-4EAA25?logo=gnubash&logoColor=white)](scripts/)
+
+</div>
+
 # Installing an OCP cluster via ABI in vCenter
 
 Scripts to install an OpenShift **4.20** cluster with the **Agent-Based
@@ -35,6 +48,7 @@ Install these on whichever machine you run the scripts from:
 | `envsubst`          | `gettext` package                                                                                | `install.sh`                       |
 | `nmstatectl`        | `nmstate` package                                                                                | `install.sh` in **auto** mode only |
 
+> [!NOTE]
 > **`nmstatectl` is easy to miss.** `openshift-install` shells out to it
 > *locally* to validate the static network config it embeds in the ISO.
 > Without it, ISO generation fails with
@@ -216,6 +230,7 @@ scripts/add-nodes.sh --manual-nodes-config  # uses your config/nodes-config.yaml
 In manual mode the file's existence is checked **before** any VM is created,
 so a missing file fails instantly instead of leaving half-provisioned VMs.
 
+>[!NOTE]
 > `nodes-config.yaml` is **only** the `hosts:` list — no
 > `apiVersion`/`metadata`/`rendezvousIP` header, unlike `agent-config.yaml`.
 
@@ -408,3 +423,9 @@ Set on every VM via `govc vm.change` at creation **and** on every re-run:
 > setting is written but only applies after a full power cycle:
 > `govc vm.power -reboot -force=true <name>`.
 
+
+---
+
+## Author
+
+**Mario Rodríguez Serrano** — [LinkedIn](https://www.linkedin.com/in/mario-rodriguez-serrano/) · [GitHub](https://github.com/Mariorscode)

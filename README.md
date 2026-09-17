@@ -77,7 +77,7 @@ Three scripts, all run from the repo root:
 | -------------------------- | --------------------------------------------------------------------------------------- |
 | `scripts/check-prereqs.sh` | Verifies required CLI tools. Also the shared library the other two source.              |
 | `scripts/install.sh`       | **Day 1** — creates VMs, renders configs, builds/uploads ISO, boots, waits for install. |
-| `scripts/add-nodes.sh`     | **Day 2** — adds worker nodes to an already-installed cluster.                          |
+| `scripts/add-nodes.sh`     | **Day 2** — adds worker or storage nodes to an already-installed cluster.               |
 
 ### Quick reference
 
@@ -190,8 +190,8 @@ while `extraConfig` settings are re-applied to every VM either way.
 
 ## 3. `scripts/add-nodes.sh` — day 2
 
-Adds **worker** nodes to a cluster that is already installed. Control-plane
-nodes are rejected up front — that flow isn't supported here.
+Adds **worker** or **storage** nodes to a cluster that is already installed.
+Control-plane nodes are rejected up front — that flow isn't supported here.
 
 ### Preparation
 
@@ -200,8 +200,37 @@ cp config/examples/new-nodes.csv config/new-nodes.csv
 $EDITOR config/new-nodes.csv     # list ONLY the new machines
 ```
 
-Same schema as `nodes.csv`. Reuses `vcenter-vars.env` and `cluster-vars.env`
-unchanged.
+Same schema as `nodes.csv` plus a trailing `storage_disks_gb` column. Reuses
+`vcenter-vars.env` and `cluster-vars.env` unchanged.
+
+### Storage nodes for ODF
+
+`role=storage` is a plain worker to OpenShift — it joins the cluster exactly
+like any other worker. The role changes two things:
+
+1. **Extra data disks on an NVMe controller.** The sizes listed in
+   `storage_disks_gb` are attached to a `VirtualNVMEController`, which is the
+   device type ODF/LSO looks for. The OS disk stays on `pvscsi`:
+
+   ```
+   nvme-31000    VirtualNVMEController   "NVME controller 0"
+   disk-31000-0  VirtualDisk             "Hard disk 2"   <- first data disk
+   ```
+
+2. **The ODF node label.** Once the node reports `Ready`, it is labelled
+   `cluster.ocs.openshift.io/openshift-storage=""`, without which ODF would
+   never schedule on it or discover the disks.
+
+```csv
+storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,120,500|500
+```
+
+> **Why the VM is created with a throwaway disk.** `govc` has no command that
+> adds an NVMe controller to an existing VM — `vm.create -disk.controller=nvme`
+> is the only way to create one, and it puts the VM's first disk on it. So the
+> VM is created with a 1 GB placeholder purely to bring the controller into
+> existence; removing that disk leaves the empty controller behind, and the
+> real disks are then attached where they belong.
 
 ### Run
 
@@ -216,7 +245,7 @@ scripts/add-nodes.sh
 | **1/4** | Logs into vCenter.                                                                                                                |
 | **2/4** | Creates the new VM(s) from `config/new-nodes.csv`, resolves MACs, writes `config/new-nodes.resolved.csv`.                         |
 | **3/4** | Builds `nodes-config.yaml`, runs `oc adm node-image create` against the running cluster, uploads the ISO and boots the new VM(s). |
-| **4/4** | Polls and approves node CSRs until every new node reports `Ready` (30 min timeout).                                               |
+| **4/4** | Polls and approves node CSRs until every new node reports `Ready` (30 min timeout), then labels any `role=storage` node for ODF.  |
 
 ### Auto vs. manual `nodes-config.yaml`
 
@@ -363,10 +392,18 @@ master-0,master,fixed,00:50:56:00:00:01,192.0.2.10,24,192.0.2.1,192.0.2.2|192.0.
 worker-0,worker,dynamic,,192.0.2.13,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
 ```
 
+`new-nodes.csv` adds one more column at the end, `storage_disks_gb`:
+
+```csv
+name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb
+worker-2,worker,dynamic,,192.0.2.15,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120,
+storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,120,500|500
+```
+
 | Column      | Options / format       | Description                                                                 |
 | ----------- | ---------------------- | --------------------------------------------------------------------------- |
 | `name`      | e.g. `master-0`        | VM name in vCenter **and** node hostname. Must be unique in the datacenter. |
-| `role`      | `master` \| `worker`   | `new-nodes.csv` accepts **`worker` only**.                                  |
+| `role`      | `master` \| `worker`   | `new-nodes.csv` accepts **`worker` or `storage`** only.                     |
 | `mac_mode`  | `fixed` \| `dynamic`   | Where the MAC comes from — see below.                                       |
 | `mac`       | `00:50:56:00:00:01`    | **Required** if `mac_mode=fixed`; **leave empty** if `dynamic`.             |
 | `ip`        | `192.0.2.10`           | Static IP. Always required — no DHCP.                                       |
@@ -375,7 +412,8 @@ worker-0,worker,dynamic,,192.0.2.13,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
 | `dns`       | `192.0.2.2\|192.0.2.3` | One or more DNS servers, `\|`-separated. Per node.                          |
 | `cpu`       | `8`                    | vCPU count. Control plane: 4 minimum, 8 recommended.                        |
 | `memory_mb` | `16384`                | RAM in **MB**. Control plane: 16384 minimum.                                |
-| `disk_gb`   | `120`                  | OS disk size in **GB**. 100 minimum.                                        |
+| `disk_gb`   | `120`                  | OS disk size in **GB**. 100 minimum. Always on `pvscsi`.                    |
+| `storage_disks_gb` | `500\|500`      | `new-nodes.csv` only. Data disk sizes in **GB**, `\|`-separated, attached on an NVMe controller. **Required** for `role=storage`, **must be empty** otherwise. |
 
 **`mac_mode`:**
 

@@ -1,6 +1,6 @@
 # Spec file for scripts/add-nodes.sh (day-2: adding nodes to an
-# already-installed cluster). Same schema as nodes.csv plus one extra
-# trailing column - copy this file to config/new-nodes.csv and list ONLY the
+# already-installed cluster). Same schema as nodes.csv plus two extra
+# trailing columns - copy this file to config/new-nodes.csv and list ONLY the
 # new machines you want to add.
 #
 # Only role=worker and role=storage are supported for day-2 additions.
@@ -16,9 +16,19 @@
 #                      e.g. 500 for a single disk, 500|500|500 for three.
 #                      Leave EMPTY for role=worker - it is rejected there.
 #
+#   network            vSphere port group the node's NIC is attached to.
+#                      Leave EMPTY to use GOVC_NETWORK from vcenter-vars.env
+#                      (what every node used before this column existed).
+#                      Set it for a node that lives in a different subnet
+#                      than the cluster's machineNetwork: the port group is
+#                      the L2 segment, so it must be the one where that
+#                      node's ip/gateway actually exist. Name or full
+#                      inventory path; it can't contain a comma.
+#
 # Resulting layout for a storage node (govc device.info):
 #   nvme-31000    VirtualNVMEController   "NVME controller 0"
 #   disk-31000-0  VirtualDisk             "Hard disk 2"   <- first data disk
-name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb
-worker-2,worker,dynamic,,192.0.2.15,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120,
-storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,120,500|500
+name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb,network
+worker-2,worker,dynamic,,192.0.2.15,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120,,
+storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,120,500|500,
+worker-remote-0,worker,dynamic,,198.51.100.10,24,198.51.100.1,192.0.2.2|192.0.2.3,8,16384,120,,VLAN-150

@@ -120,13 +120,32 @@ say_dim "$GOVC_URL (datacenter: $GOVC_DATACENTER)"
 # scripts/check-prereqs.sh.
 vcenter_login
 
+# Every port group named in the network column has to exist before any VM is
+# created: a typo would otherwise only surface as a govc error after some of
+# the VMs already exist. Needs the vCenter session, hence after the login.
+# Types n/g/o cover standard port groups, distributed port groups and NSX
+# segments - the three things vm.create -net accepts.
+# Like the other GOVC_* targets, a full inventory path is accepted as well as
+# a bare name; find -name only understands names, so paths go through ls.
+while IFS= read -r net; do
+  [[ -n "$net" ]] || continue
+  if [[ "$net" == /* ]]; then
+    found="$(govc ls "$net" 2>/dev/null || true)"
+  else
+    found="$(govc find -dc="$GOVC_DATACENTER" / -type n -type g -type o -name "$net" 2>/dev/null || true)"
+  fi
+  [[ -n "$found" ]] || die "config/new-nodes.csv: network '$net' not found in datacenter $GOVC_DATACENTER"
+  say_ok "network '$net' found"
+done < <(grep -vE '^[[:space:]]*(#|$)' config/new-nodes.csv | tail -n +2 |
+         awk -F',' '{gsub(/\r/,"",$13); print $13}' | sort -u)
+
 
 # ==========================
 #  [2/4] Create the new VMs
 # ==========================
 
 say_step 2 4 "Creating VM(s) from config/new-nodes.csv"
-echo "name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb" > "$RESOLVED_CSV"
+echo "name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb,network" > "$RESOLVED_CSV"
 
 # Same vSphere extraConfig settings as install.sh, kept in sync with it:
 #   disk.EnableUUID   - required for RHCOS disks to mount correctly on vSphere
@@ -142,10 +161,15 @@ if [[ -z "${NTP_SERVERS:-}" ]]; then
 fi
 
 grep -vE '^[[:space:]]*(#|$)' config/new-nodes.csv | tail -n +2 |
-while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb disk_gb storage_disks_gb; do
+while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb disk_gb storage_disks_gb network; do
 
-  # Last column, so it carries the CRLF when the CSV was edited on Windows.
   storage_disks_gb="$(printf '%s' "${storage_disks_gb:-}" | tr -d '[:space:]')"
+  # Last column, so it carries the CRLF when the CSV was edited on Windows.
+  # Only \r is stripped: port group names can legitimately contain spaces
+  # ("VM Network").
+  network="${network%$'\r'}"
+  # Empty = the cluster's default port group, so existing CSVs keep working.
+  network="${network:-$GOVC_NETWORK}"
 
   # Scoped strictly to our datacenter, so a same-named VM elsewhere in
   # vCenter can never cause a false "already exists".
@@ -154,10 +178,10 @@ while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb
   if [[ -n "$existing" ]]; then
     say_warn "$name: already exists at '$existing', skipping create"
   else
-    say_info "$name ${C_DIM}($role)${C_RESET}: creating ${cpu}vCPU / ${memory_mb}MB / ${disk_gb}GB"
+    say_info "$name ${C_DIM}($role)${C_RESET}: creating ${cpu}vCPU / ${memory_mb}MB / ${disk_gb}GB on '$network'"
 
     # Network adapter is always vmxnet3; MAC is only forced for mac_mode=fixed.
-    net_args=(-net="$GOVC_NETWORK" -net.adapter=vmxnet3)
+    net_args=(-net="$network" -net.adapter=vmxnet3)
     if [[ "$mac_mode" == "fixed" ]]; then
       net_args+=(-net.address="$mac")
     fi
@@ -235,7 +259,7 @@ while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb
     say_dim "    resolved dynamic MAC: $mac"
   fi
 
-  echo "$name,$role,$mac_mode,$mac,$ip,$prefix,$gateway,$dns,$cpu,$memory_mb,$disk_gb,$storage_disks_gb" >> "$RESOLVED_CSV"
+  echo "$name,$role,$mac_mode,$mac,$ip,$prefix,$gateway,$dns,$cpu,$memory_mb,$disk_gb,$storage_disks_gb,$network" >> "$RESOLVED_CSV"
 done
 
 say_ok "VM(s) ready. Resolved MAC per node:"
@@ -264,7 +288,7 @@ else
     echo "hosts:"
   } > "$DAY2_DIR/nodes-config.yaml"
 
-  tail -n +2 "$RESOLVED_CSV" | while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb disk_gb storage_disks_gb; do
+  tail -n +2 "$RESOLVED_CSV" | while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb disk_gb storage_disks_gb network; do
     {
       echo "  - hostname: ${name}"
       echo "    interfaces:"
@@ -310,7 +334,7 @@ ISO_DS_NAME="$(basename "$GOVC_ISO_DATASTORE")"
 ISO_REF="[$ISO_DS_NAME] $DAY2_ISO_DATASTORE_PATH"
 say_ok "Uploaded to $ISO_REF"
 
-tail -n +2 "$RESOLVED_CSV" | while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb disk_gb storage_disks_gb; do
+tail -n +2 "$RESOLVED_CSV" | while IFS=',' read -r name role mac_mode mac ip prefix gateway dns cpu memory_mb disk_gb storage_disks_gb network; do
   say_info "$name: attaching ISO and powering on"
   cdrom="$(govc device.ls -vm "$name" | awk '/^cdrom-/{print $1; exit}')"
   [[ -n "$cdrom" ]] || cdrom="$(govc device.cdrom.add -vm "$name")"

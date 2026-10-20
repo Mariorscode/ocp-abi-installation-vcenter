@@ -200,7 +200,7 @@ cp config/examples/new-nodes.csv config/new-nodes.csv
 $EDITOR config/new-nodes.csv     # list ONLY the new machines
 ```
 
-Same schema as `nodes.csv` plus a trailing `storage_disks_gb` column. Reuses
+Same schema as `nodes.csv` plus trailing `storage_disks_gb` and `network` columns. Reuses
 `vcenter-vars.env` and `cluster-vars.env` unchanged.
 
 ### Storage nodes for ODF
@@ -392,12 +392,13 @@ master-0,master,fixed,00:50:56:00:00:01,192.0.2.10,24,192.0.2.1,192.0.2.2|192.0.
 worker-0,worker,dynamic,,192.0.2.13,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120
 ```
 
-`new-nodes.csv` adds one more column at the end, `storage_disks_gb`:
+`new-nodes.csv` adds two more columns at the end, `storage_disks_gb` and `network`:
 
 ```csv
-name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb
-worker-2,worker,dynamic,,192.0.2.15,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120,
-storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,120,500|500
+name,role,mac_mode,mac,ip,prefix,gateway,dns,cpu,memory_mb,disk_gb,storage_disks_gb,network
+worker-2,worker,dynamic,,192.0.2.15,24,192.0.2.1,192.0.2.2|192.0.2.3,8,16384,120,,
+storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,120,500|500,
+worker-remote-0,worker,dynamic,,198.51.100.10,24,198.51.100.1,192.0.2.2|192.0.2.3,8,16384,120,,VLAN-150
 ```
 
 | Column      | Options / format       | Description                                                                 |
@@ -414,6 +415,7 @@ storage-0,storage,dynamic,,192.0.2.16,24,192.0.2.1,192.0.2.2|192.0.2.3,16,32768,
 | `memory_mb` | `16384`                | RAM in **MB**. Control plane: 16384 minimum.                                |
 | `disk_gb`   | `120`                  | OS disk size in **GB**. 100 minimum. Always on `pvscsi`.                    |
 | `storage_disks_gb` | `500\|500`      | `new-nodes.csv` only. Data disk sizes in **GB**, `\|`-separated, attached on an NVMe controller. **Required** for `role=storage`, **must be empty** otherwise. |
+| `network` | `VLAN-150` | `new-nodes.csv` only. vSphere port group for the node's NIC. **Empty** = `GOVC_NETWORK`. Set it for a node in a different subnet than `machineNetwork`: it must be the port group where that node's `ip`/`gateway` live. Checked against vCenter before any VM is created. |
 
 **`mac_mode`:**
 
